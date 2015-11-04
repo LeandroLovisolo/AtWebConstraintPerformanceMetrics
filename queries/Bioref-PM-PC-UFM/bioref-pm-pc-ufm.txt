@@ -14,10 +14,10 @@ prefix bioraf: <http://opendata.inra.fr/resources/BIORAF#>
 prefix anno: <http://opendata.inra.fr/resources/atWeb/annotation/>
 
 SELECT ?docid ?doctitle ?tableid ?tabletitle
-       ?rownum1 ?expnum1 ?stepnum1 ?milling
-       ?rownum2 ?expnum2 ?stepnum2 ?physico_chemical_treatment
-       ?rownum3 ?expnum3 ?stepnum3 ?ultra_fine_milling
-       ?rownum4 ?expnum4 ?stepnum4
+       ?rownum1 ?stepnum1 ?expnum ?milling
+       ?rownum2 ?stepnum2 ?physico_chemical_treatment
+       ?rownum3 ?stepnum3 ?ultra_fine_milling
+       ?rownum4 ?stepnum4
 WHERE {
 
 # Placeholder #docid# is replaced from Java code
@@ -116,7 +116,7 @@ VALUES ?ultra_fine_milling {
       anno:hasForCell [a bioraf:experience_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
-                       anno:hasForMinKernel ?expnum1] ;
+                       anno:hasForMinKernel ?expnum] ;
       anno:hasForCell [a bioraf:process_step_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
@@ -130,7 +130,7 @@ VALUES ?ultra_fine_milling {
       anno:hasForCell [a bioraf:experience_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
-                       anno:hasForMinKernel ?expnum2] ;
+                       anno:hasForMinKernel ?expnum] ;
       anno:hasForCell [a bioraf:process_step_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
@@ -145,7 +145,7 @@ VALUES ?ultra_fine_milling {
       anno:hasForCell [a bioraf:experience_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
-                       anno:hasForMinKernel ?expnum3] ;
+                       anno:hasForMinKernel ?expnum] ;
       anno:hasForCell [a bioraf:process_step_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
@@ -159,7 +159,7 @@ VALUES ?ultra_fine_milling {
       anno:hasForCell [a bioraf:experience_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
-                       anno:hasForMinKernel ?expnum4] ;
+                       anno:hasForMinKernel ?expnum] ;
       anno:hasForCell [a bioraf:process_step_number ;
                        anno:hasForFS /
                        anno:hasForFuzzyElement /
@@ -170,10 +170,7 @@ VALUES ?ultra_fine_milling {
       a bioraf:enzymatic_hydrolysis_treatment .
 
 
-FILTER (?expnum1 = ?expnum2 &&
-        ?expnum2 = ?expnum3 &&
-        ?expnum3 = ?expnum4 &&
-        xsd:float(?stepnum1) < xsd:float(?stepnum2) &&
+FILTER (xsd:float(?stepnum1) < xsd:float(?stepnum2) &&
         xsd:float(?stepnum2) < xsd:float(?stepnum3) &&
         xsd:float(?stepnum3) < xsd:float(?stepnum4))
 }
