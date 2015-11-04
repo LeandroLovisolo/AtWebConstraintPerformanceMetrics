@@ -4,3 +4,6 @@
 
 # Build
 /target
+
+# TDB triple store
+/tdb

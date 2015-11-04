@@ -1,0 +1,32 @@
+# Topic Bioref-PM
+#
+# In all the treatments and for biomass characterization, the control
+# experiment must be registered in the topic « Bioref-PM ». When the «
+# Experience number » of an experiment is equal to 0 in a process description,
+# it also means that it is a control experiment. (en)
+
+prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+prefix dc: <http://purl.org/dc/elements/1.1/>
+prefix bioraf: <http://opendata.inra.fr/resources/BIORAF#>
+prefix anno: <http://opendata.inra.fr/resources/atWeb/annotation/>
+
+SELECT ?docid ?doctitle ?tableid ?tabletitle ?rownum ?expnum
+WHERE {
+
+# Placeholder #docid# is replaced from Java code
+BIND(#docid# as ?docid)
+
+?doc anno:hasForID ?docid ;
+     dc:title ?doctitle ;
+     anno:hasTable [anno:hasForID ?tableid ;
+                    dc:title ?tabletitle ;
+                    anno:hasForRow ?row] .
+
+?row anno:hasForRowNumber ?rownum ;
+     anno:hasForCell [a bioraf:experience_number ;
+                      anno:hasForFS /
+                      anno:hasForFuzzyElement /
+                      anno:hasForMinKernel ?expnum] .
+
+FILTER (xsd:float(?expnum) = 0)
+}
