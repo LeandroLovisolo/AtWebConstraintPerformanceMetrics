@@ -7,3 +7,6 @@
 
 # TDB triple store
 /tdb
+
+# Uncompressed Turtle files
+/triples/*.ttl

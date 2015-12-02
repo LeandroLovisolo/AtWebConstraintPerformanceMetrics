@@ -1,0 +1,46 @@
+prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+prefix dc: <http://purl.org/dc/elements/1.1/>
+prefix bioraf: <http://opendata.inra.fr/resources/BIORAF#>
+prefix core: <http://opendata.inra.fr/resources/core#>
+prefix anno: <http://opendata.inra.fr/resources/atWeb/annotation/>
+
+SELECT ?docid ?doctitle ?tableid ?tabletitle ?rownum
+       ?solid_qty ?solid_unit
+       ?liquid_qty ?liquid_unit
+       ?output_qty ?output_unit
+WHERE {
+?doc anno:hasForID ?docid ;
+     dc:title ?doctitle ;
+     anno:hasTable ?table .
+
+?table anno:hasForID ?tableid ;
+       dc:title ?tabletitle ;
+       anno:hasForRow ?row .
+
+?row anno:hasForRowNumber ?rownum ;
+     anno:hasForRelation [a bioraf:milling_solid_quantity_output_relation ;
+                          core:hasAccessConcept ?solid ;
+                          core:hasAccessConcept ?liquid ;
+                          core:hasResultConcept ?output] .
+
+?solid a bioraf:biomass_quantity ;
+       anno:hasForFS [a anno:Scalar ;
+                      anno:hasForUnit ?solid_unit ;
+                      anno:hasForFuzzyElement /
+                      anno:hasForMaxKernel ?solid_qty] .
+
+?liquid a bioraf:water_quantity ;
+        anno:hasForFS [a anno:Scalar ;
+                       anno:hasForUnit ?liquid_unit ;
+                       anno:hasForFuzzyElement /
+                       anno:hasForMaxKernel ?liquid_qty] .
+
+?output a bioraf:output_solid_constituent_quantity ;
+        anno:hasForFS [a anno:Scalar ;
+                       anno:hasForUnit ?output_unit ;
+                       anno:hasForFuzzyElement /
+                       anno:hasForMaxKernel ?output_qty] .
+
+FILTER (xsd:float(?output_qty) !=
+        xsd:float(?solid_qty) + xsd:float(?liquid_qty))
+}

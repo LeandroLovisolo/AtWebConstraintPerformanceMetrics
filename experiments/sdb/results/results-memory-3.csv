@@ -1,0 +1,4 @@
+queryPath, docId, milliseconds
+experiments/sdb/queries/experiment-zero.txt, 1271, 81
+experiments/sdb/queries/experiment-zero.txt, 1272, 5
+experiments/sdb/queries/experiment-zero.txt, 1273, 5

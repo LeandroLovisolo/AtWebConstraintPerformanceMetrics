@@ -1,13 +1,9 @@
 package fr.inra.supagro.atweb.constraints.metrics;
 
+import org.apache.commons.cli.*;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.jena.query.*;
-import org.apache.jena.rdf.model.Literal;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.tdb.TDBFactory;
-import org.apache.jena.util.FileUtils;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -18,59 +14,13 @@ import java.util.List;
 
 public class App
 {
-    private static class AtWebQuery {
-        public String path;
-        public String query;
 
-        public AtWebQuery(String path, String query) {
-            this.path = path;
-            this.query = query;
-        }
+    private static TripleStore tripleStore;
 
-        public AtWebQuery bindDocId(Integer docId) {
-            return new AtWebQuery(path, query.replaceAll("#docid#", docId.toString()));
-        }
-    }
-
-    private static class Stats {
-        public String queryPath;
-        public Integer docId;
-        public Long milliseconds;
-
-        public Stats(String queryPath, Integer docId, Long milliseconds) {
-            this.queryPath = queryPath;
-            this.docId = docId;
-            this.milliseconds = milliseconds;
-        }
-    }
-
-    private static Dataset dataset;
-
-    private static Model loadInMemoryModel()
-    {
-        Model model = ModelFactory.createDefaultModel();
-        model.read(App.class.getResourceAsStream("/annotations-small.ttl"), null, FileUtils.langTurtle);
-        model.read(App.class.getResourceAsStream("/IC2ACV.owl"), null);
-        return model;
-    }
-
-    private static Model loadTdbModel() {
-        Dataset dataset = TDBFactory.createDataset("tdb");
-        Model model = dataset.getDefaultModel();
-
-        // If model is empty, populate it with annotations and biorefinery ontology triples
-        if(model.size() == 0) {
-            model.read(App.class.getResourceAsStream("/annotations-small.ttl"), null, FileUtils.langTurtle);
-            model.read(App.class.getResourceAsStream("/IC2ACV.owl"), null);
-        }
-
-        return model;
-    }
-
-    private static List<AtWebQuery> getQueries() {
+    private static List<AtWebQuery> getQueries(String pathToQueries) {
         List<AtWebQuery> queries = new ArrayList<AtWebQuery>();
         Collection<File> files = org.apache.commons.io.FileUtils.listFiles(
-                org.apache.commons.io.FileUtils.getFile("queries"),
+                org.apache.commons.io.FileUtils.getFile(pathToQueries),
                 new RegexFileFilter("^(.*?)"), DirectoryFileFilter.DIRECTORY);
         for(File file : files) {
             try {
@@ -84,29 +34,33 @@ public class App
         return queries;
     }
 
-    private static List<Integer> getDocIds(Model model) {
+    private static List<Integer> getDocIds() {
         List<Integer> docIds = new ArrayList<Integer>();
 
-        String q = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
-                   "prefix anno: <http://opendata.inra.fr/resources/atWeb/annotation/>\n" +
-                   "SELECT ?docid WHERE { ?doc rdf:type anno:Document; anno:hasForID ?docid . }";
-        QueryExecution qexec = QueryExecutionFactory.create(q, model);
+//        String q = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
+//                   "prefix anno: <http://opendata.inra.fr/resources/atWeb/annotation/>\n" +
+//                   "SELECT ?docid WHERE { ?doc rdf:type anno:Document; anno:hasForID ?docid . }";
+//        QueryExecution qexec = QueryExecutionFactory.create(q, model);
+//
+//        ResultSet results = qexec.execSelect() ;
+//        for ( ; results.hasNext() ; )
+//        {
+//            QuerySolution soln = results.nextSolution();
+//            Literal l = soln.getLiteral("?docid");
+//            docIds.add(l.getInt());
+//        }
 
-        ResultSet results = qexec.execSelect() ;
-        for ( ; results.hasNext() ; )
-        {
-            QuerySolution soln = results.nextSolution();
-            Literal l = soln.getLiteral("?docid");
-            docIds.add(l.getInt());
-        }
+        docIds.add(1271);
+//        docIds.add(1272);
+//        docIds.add(1273);
 
         return docIds;
     }
 
-    private static List<Stats> executeQueries(Model model) {
+    private static List<Stats> executeQueries(String pathToQueries) {
         List<Stats> stats = new ArrayList<Stats>();
-        List<AtWebQuery> queries = getQueries();
-        List<Integer> docIds = getDocIds(model);
+        List<AtWebQuery> queries = getQueries(pathToQueries);
+        List<Integer> docIds = getDocIds();
 
         for(AtWebQuery query : queries) {
             System.out.println("Executing query " + query.path + "...");
@@ -121,8 +75,8 @@ public class App
                 System.out.printf("  Querying docId %d... ", docId);
 
                 AtWebQuery boundQuery = query.bindDocId(docId);
-                QueryExecution qexec = QueryExecutionFactory.create(boundQuery.query, model);
-
+                QueryExecution qexec = tripleStore.executeQuery(boundQuery.query, docId);
+                System.out.println("  Query execution object created.");
                 List<QuerySolution> solutions = new ArrayList<QuerySolution>();
 
                 long t0 = System.currentTimeMillis();
@@ -152,31 +106,88 @@ public class App
         }
     }
 
+    private static Options getOptions() {
+        Options options = new Options();
+        options.addOption("triples", true, "Path to file with triples to test against (Turtle format)");
+        options.addOption("queries", true, "Path to directory with SPARQL query files (plain-text files)");
+        options.addOption("store", true, "Triple store to use. Must be 'memory', 'tdb' or 'sdb' (without quotes).");
+        options.addOption("csv", true, "Path to a file in which statistics will be stored in CSV format.");
+        options.addOption("tdb", true, "Use an existing TDB store with named graphs for each document.");
+        options.addOption("help", "Print help.");
+        return options;
+    }
+
+    private static CommandLine cli(String[] args) {
+        Options options = getOptions();
+        CommandLineParser parser = new DefaultParser();
+        CommandLine line = null;
+        try {
+            line = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println("Unexpected exception:" + e.getMessage());
+        }
+        return line;
+    }
+
     private static void printHelp() {
-        System.out.println("Accepted command-line arguments: [store] [csv]");
-        System.out.println("  where: [store] is either 'memory' or 'tdb' (without quotes)");
-        System.out.println("         [csv]   is a path where stats will be written in CSV format");
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("metrics", getOptions());
     }
 
     public static void main( String[] args )
     {
-        if(args.length > 2) {
+        CommandLine line = cli(args);
+
+        if(line.hasOption("help") || (!line.hasOption("tdb") && !line.hasOption("triples")) || !line.hasOption("queries")) {
             printHelp();
             return;
         }
 
-        String modelType = "memory";
-        if(args.length >= 1) {
-            if(!args[0].equals("memory") && !args[0].equals("tdb")) {
+        if(line.hasOption("tdb") && line.hasOption("store")) {
+            System.out.println("Can't use 'store' and 'tdb' options simultaneously.");
+            printHelp();
+            return;
+        }
+
+        String pathToTdbStore = line.getOptionValue("tdb");
+        String pathToTriples = line.getOptionValue("triples");
+        String pathToQueries = line.getOptionValue("queries");
+
+        if(pathToTdbStore != null) {
+            tripleStore = new PrePopulatedTdbTripleStore();
+            tripleStore.open(pathToTdbStore);
+        } else {
+            String modelType = "tdb";
+            String storeOpt = line.getOptionValue("store");
+            if (storeOpt == null) {
+                modelType = "memory";
+            } else if (storeOpt.equals("memory") || storeOpt.equals("tdb") || storeOpt.equals("sdb")) {
+                modelType = storeOpt;
+            } else {
                 printHelp();
                 return;
             }
-            modelType = args[0];
+
+            if(modelType.equals("memory")) {
+                System.out.println("Loading in-memory model...");
+                tripleStore = new InMemoryTripleStore();
+            } else if(modelType.equals("tdb")) {
+                System.out.println("Loading TDB model...");
+                tripleStore = new TdbTripleStore();
+            } else {
+                System.out.println("Loading SDB model...");
+                tripleStore = new SdbTripleStore();
+            }
+
+            tripleStore.open(pathToTriples);
         }
 
+        System.out.printf("Model loaded; %d triples read.\n", tripleStore.getModel().size());
+
         PrintStream csv = null;
-        if(args.length == 2) try {
-            csv = new PrintStream(args[1], "utf-8");
+        String csvOpt = line.getOptionValue("csv");
+        if(csvOpt != null) try {
+            csv = new PrintStream(csvOpt, "utf-8");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return;
@@ -185,25 +196,13 @@ public class App
             return;
         }
 
-        Model model;
-        if(modelType.equals("memory")) {
-            System.out.println("Loading in-memory model...");
-            model = loadInMemoryModel();
-        } else {
-            System.out.println("Loading TDB model...");
-            model = loadTdbModel();
-        }
-        System.out.printf("Model loaded; %d triples read.\n", model.size());
-
         System.out.println("Executing queries...");
-        List<Stats> stats = executeQueries(model);
+        List<Stats> stats = executeQueries(pathToQueries);
 
         System.out.println("--------------------------------------------------");
         System.out.println("Stats summary:");
         printStats(stats, System.out);
 
         if(csv != null) printStats(stats, csv);
-
-        if(dataset != null) dataset.close();
     }
 }
