@@ -1,6 +1,6 @@
 package fr.inra.supagro.atweb.constraints.metrics;
 
-
+import org.apache.commons.cli.Options;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -16,11 +16,17 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
-public class SdbTripleStore implements TripleStore {
-    private Store store;
-    private Model model;
+public class SdbExperiment extends Experiment {
     private Dataset dataset;
+
+    @Override
+    protected Options getOptions() {
+        Options options = super.getOptions();
+        options.addOption("triples", true, "Path to triples file (Turtle format)");
+        return options;
+    }
 
     private void resetDb() {
         // Retrieve database parameters
@@ -34,15 +40,15 @@ public class SdbTripleStore implements TripleStore {
         }
         model.read(ttlFileStream, null, FileUtils.langTurtle);
         String q = "prefix sdb:  <http://jena.hpl.hp.com/2007/sdb#> \n" +
-                   "SELECT ?host ?dbname ?dbuser WHERE {\n" +
-                   "    <#conn> a sdb:SDBConnection ;\n" +
-                   "            sdb:sdbType \"postgresql\" ;\n" +
-                   "            sdb:sdbHost ?host ;\n" +
-                   "            sdb:sdbName ?dbname ;\n" +
-                   "            sdb:sdbUser ?dbuser .\n" +
-                   "}";
+                "SELECT ?host ?dbname ?dbuser WHERE {\n" +
+                "    <#conn> a sdb:SDBConnection ;\n" +
+                "            sdb:sdbType \"postgresql\" ;\n" +
+                "            sdb:sdbHost ?host ;\n" +
+                "            sdb:sdbName ?dbname ;\n" +
+                "            sdb:sdbUser ?dbuser .\n" +
+                "}";
         QueryExecution qexec = QueryExecutionFactory.create(q, model);
-        ResultSet results = qexec.execSelect() ;
+        ResultSet results = qexec.execSelect();
         QuerySolution soln = results.nextSolution();
         String host = soln.getLiteral("?host").getString();
         String dbname = soln.getLiteral("?dbname").getString();
@@ -72,44 +78,34 @@ public class SdbTripleStore implements TripleStore {
         }
     }
 
-    public void open(String pathToTtlFile) {
+    @Override
+    protected List<Stats> doRun(String pathToQueries) {
         resetDb();
 
-        store = SDBFactory.connectStore("sdb.ttl") ;
-        model = SDBFactory.connectDefaultModel(store) ;
+        Store store = SDBFactory.connectStore("sdb.ttl") ;
+        Model model = SDBFactory.connectDefaultModel(store) ;
 
         // Must be a DatasetStore to trigger the SDB query engine.
         // Creating a graph from the Store, and adding it to a general
         // purpose dataset will not necesarily exploit full SQL generation.
         // The right answers will be obtained but slowly.
-
         dataset = DatasetStore.create(store) ;
 
-        // If model is empty, populate it with annotations and biorefinery ontology triples
-        if(model.size() == 0) {
-            System.out.println("Populating model");
-            InputStream ttlFileStream = null;
-            try {
-                ttlFileStream = new FileInputStream(pathToTtlFile);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-                System.exit(-1);
-            }
-            model.read(ttlFileStream, null, FileUtils.langTurtle);
-            model.read(App.class.getResourceAsStream("/IC2ACV.owl"), null);
-        }
+        readTtl(model, commandLine.getOptionValue("triples"));
+
+        List<Stats> stats = super.doRun(pathToQueries);
+
+        store.getConnection().close();
+        store.close();
+        return stats;
     }
 
-    public void close() {
-        store.getConnection().close() ;
-        store.close() ;
+    @Override
+    protected QueryExecution executeQuery(String query, Integer docId) {
+        return QueryExecutionFactory.create(query, dataset);
     }
 
-    public QueryExecution executeQuery(String q, Integer docId) {
-        return QueryExecutionFactory.create(q, dataset);
-    }
-
-    public Model getModel() {
-        return model;
+    public static void main(String args[]) {
+        new SdbExperiment().run(args);
     }
 }
