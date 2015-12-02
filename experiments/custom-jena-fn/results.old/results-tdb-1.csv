@@ -1,7 +1,0 @@
-queryPath, docId, milliseconds
-experiments/custom-jena-fn/queries/integrity-constraint.txt, 1271, 639
-experiments/custom-jena-fn/queries/integrity-constraint.txt, 1272, 415
-experiments/custom-jena-fn/queries/integrity-constraint.txt, 1273, 396
-experiments/custom-jena-fn/queries/integrity-constraint-with-custom-fn.txt, 1271, 419
-experiments/custom-jena-fn/queries/integrity-constraint-with-custom-fn.txt, 1272, 368
-experiments/custom-jena-fn/queries/integrity-constraint-with-custom-fn.txt, 1273, 405
