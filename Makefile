@@ -1,6 +1,9 @@
-.PHONY: run-experiments run-10M run-atweb run-bioref run-custom-jena-fn \
-        run-sdb \
+.PHONY: uncompress run-experiments run-10M run-atweb run-bioref \
+        run-custom-jena-fn run-sdb \
         plot-10M plot-atweb plot-bioref plot-custom-jena-fn
+
+uncompress:
+	bunzip2 triples/*.bz2 -vk
 
 run-experiments: run-10M run-atweb run-bioref run-custom-jena-fn run-sdb
 
