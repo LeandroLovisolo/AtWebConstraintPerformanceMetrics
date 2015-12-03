@@ -14,11 +14,11 @@ The following list gives a brief explanation of each dataset used thrughout the 
 
 - `annotations-bioref-pm.ttl`: annotations of the subset of documents in the biorefinery domain which contain experiments in the "Bioref-PM" topic. Size: 18790 triples.
 
-- `annotations-bioref.ttl`: annotations of all the documents in the biorefinery domain. Size: 791086 triples.
+- `annotations-bioref.ttl`: annotations of all documents in the biorefinery domain. Size: 791086 triples.
 
 - `annotations-atweb.ttl`: the complete set of all annotations in the @Web platform. Size: 863048 triples.
 
-- `annotations-1M.ttl`: complete set of annotations in the @Web platform, plus multiple copies with different URIs created to increment the triple count. Size: around 1 million triples.
+- `annotations-1M.ttl`: complete set of annotations in the @Web platform, plus multiple copies with different URIs to increment the triple count. Size: around 1 million triples.
 
 - `annotations-10M.ttl`: same as `annotations-1M.ttl`, with a larger triple count. Size: around 10 million triples.
 
